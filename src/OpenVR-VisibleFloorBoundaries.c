@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <math.h>
+#include <float.h>
 //#include <stdbool.h>
 
 //Make it so we don't need to include any other C files in our build.
@@ -36,7 +37,18 @@ struct HmdQuad_t chaperoneQuad;
 // In meters
 float boundsSize = 0.0;
 
+struct VRTextureBounds_t boundsUV;
+
+float currentBoundsWidth = FLT_MAX;
+float currentBoundsHeight = FLT_MAX;
+
+GLuint texture;
+
 VROverlayHandle_t overlayHandle;
+
+int createdWindow = 0;
+
+struct HmdMatrix34_t m;
 
 void* CNOVRGetOpenVRFunctionTable( const char * interfacename )
 {
@@ -60,53 +72,26 @@ void* CNOVRGetOpenVRFunctionTable( const char * interfacename )
 #define BOARDER_WIDTH_DIV2 BOARDER_WIDTH/2
 #define BOARDER_MARGIN 6
 
+#define INITIALIZE_CHECK_MAX 500
+#define INITIALIZE_WAIT_MILISECONDS 2500
+
 int overlayPixelSize = 100;
 
-int main()
+// ReCalculates Bounds if a change in the Chaperone is dectected
+int ReCalculateBounds()
 {
-	printf("Woof?\n");
-
-    printf("Initializing OpenVR-VisibleFloorBoundaries\n");
-
-	{
-		EVRInitError e;	
-		
-		VR_InitInternal(&e, EVRApplicationType_VRApplication_Overlay);
-		if (e != EVRInitError_VRInitError_None)
-		{
-			printf("Failed to initialize OpenVR API %d\n", e);
-			return -1;
-		}
-		else
-		{
-			printf("Everything Dandy!\n");
-		}
-	}
-
-	oSystem = (struct VR_IVRSystem_FnTable*)CNOVRGetOpenVRFunctionTable(IVRSystem_Version);
-	oOverlay = (struct VR_IVROverlay_FnTable*)CNOVRGetOpenVRFunctionTable(IVROverlay_Version);
-	oChaperone = (struct VR_IVRChaperone_FnTable*)CNOVRGetOpenVRFunctionTable(IVRChaperone_Version);
-
-	if (!oSystem || !oOverlay || !oChaperone)
-	{ 
-		printf("Error getting function tables from OpenVR System and/or OpenVR Overlay and/or OpenVR Chaperone");
-		return -2;
-	}
-
-	oOverlay->CreateOverlay("OpenVR-VisibleFloorBoundaries", "OpenVR-VisibleFloorBoundaries", &overlayHandle);
-	oOverlay->SetOverlayColor(overlayHandle, 1, 1, 1);
-
-	struct VRTextureBounds_t boundsUV;
-	boundsUV.uMin = 0;
-	boundsUV.uMax = 1;
-	boundsUV.vMin = 0;
-	boundsUV.vMax = 1;
-
-	//struct HmdQuad_t qwad;
 	oChaperone->GetPlayAreaRect(&chaperoneQuad);
-
 	float boundsWidth = chaperoneQuad.vCorners[0].v[0] - chaperoneQuad.vCorners[1].v[0];
 	float boundsHeight = chaperoneQuad.vCorners[0].v[2] - chaperoneQuad.vCorners[2].v[2];
+	if (boundsWidth == currentBoundsWidth && boundsHeight == currentBoundsHeight)
+	{
+		return 0;
+	}
+
+	printf("Boundaries have changed dimentions\n");
+
+	currentBoundsWidth = boundsWidth;
+	currentBoundsHeight = boundsHeight;
 
 	//printf("bounds? %f, %f, %f\n", qwad.vCorners[0].v[0], qwad.vCorners[0].v[1], qwad.vCorners[0].v[2]);
 
@@ -138,24 +123,32 @@ int main()
 
 	overlayPixelSize = (int)(boundsSize * PIXELS_PER_METER); 
 
-	if (overlayPixelSize > MAX_OVERLAY_SIZE)
+	//if (overlayPixelSize > MAX_OVERLAY_SIZE)
+	//{
+	//	overlayPixelSize = MAX_OVERLAY_SIZE;
+	//}
+
+	if (overlayPixelSize > MAX_OVERLAY_SIZE - BOARDER_MARGIN * 2)
 	{
-		overlayPixelSize = MAX_OVERLAY_SIZE;
+		overlayPixelSize = MAX_OVERLAY_SIZE - BOARDER_MARGIN * 2;
 	}
 
 	boundsSize += boundsSize * (BOARDER_MARGIN / (float)overlayPixelSize);
 
-	//printf("Playspace Size: %f, %f  | Size: %f | Size in Pixels: %d\n", boundsWidth, boundsHeight, boundsSize, overlayPixelSize, (int)(boundsSize * PIXELS_PER_METER));
 
-	CNFGSetup("OpenVR-VisibleFloorBoundaries", overlayPixelSize + BOARDER_MARGIN * 2, overlayPixelSize + BOARDER_MARGIN * 2);
-	//CNFGSetup( "Example App", WIDTH, HEIGHT);
+	if (createdWindow == 0)
+	{
+		CNFGSetup("OpenVR-VisibleFloorBoundaries", MAX_OVERLAY_SIZE, MAX_OVERLAY_SIZE);
+		//CNFGSetup("OpenVR-VisibleFloorBoundaries", overlayPixelSize + BOARDER_MARGIN * 2, overlayPixelSize + BOARDER_MARGIN * 2);
 
-	//oOverlay->SetOverlayWidthInMeters(overlayHandle, boundsSize);
-	oOverlay->SetOverlayTextureBounds(overlayHandle, &boundsUV);
-	oOverlay->SetOverlayWidthInMeters(overlayHandle, boundsSize);
+		oOverlay->SetOverlayTextureBounds(overlayHandle, &boundsUV);
+		createdWindow = 1;
+	}
+
+	oOverlay->SetOverlayWidthInMeters(overlayHandle, ((float)MAX_OVERLAY_SIZE - (float)BOARDER_MARGIN * 2.0) / (float)PIXELS_PER_METER);
+	//oOverlay->SetOverlayWidthInMeters(overlayHandle, boundsSize * (MAX_OVERLAY_SIZE / ((boundsSize * PIXELS_PER_METER) + BOARDER_MARGIN * 2)));
 	oOverlay->ShowOverlay(overlayHandle);
 
-	GLuint texture;
 	glGenTextures(1, &texture);
 
 	glBindTexture(GL_TEXTURE_2D, texture);
@@ -163,11 +156,144 @@ int main()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 
 	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayPixelSize, overlayPixelSize, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, WIDTH, HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+	//glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, MAX_OVERLAY_SIZE, MAX_OVERLAY_SIZE, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+
+	oOverlay->SetOverlayTransformAbsolute(overlayHandle, ETrackingUniverseOrigin_TrackingUniverseStanding, &m);
+
+	return 1;
+}
+
+void DrawBoundaryTexture()
+{
+	CNFGBGColor = 0x00000000; //Force transparent background
+
+	CNFGClearFrame();
+
+	//Change color to white.
+	CNFGColor( 0xffffffcf ); 	
+
+	if (boundsSize != 0)
+	{
+		int horizontalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BOARDER_WIDTH_DIV2 - 1;
+		int verticalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BOARDER_WIDTH_DIV2 - 1;
+		float pixelRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / 2.0;
+		float boundsRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / boundsSize;
+
+		// Top Rectangle
+		CNFGTackRectangle(
+			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2
+		);
+
+		// Left Rectangle
+		CNFGTackRectangle(
+			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 +1 
+		);
+
+		// Bottom Rectangle
+		CNFGTackRectangle(
+			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1
+		);	
+	
+		// Right Rectangle
+		CNFGTackRectangle(
+			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 
+		);	
+
+		CNFGPenX = horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
+		CNFGPenY = verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
+		CNFGDrawText( "~Sable7 <3", 2 );
+
+	}
+
+	//Display the image and wait for time to display next frame.
+	CNFGSwapBuffers();
+
+	//CNFGFlushRender();
+
+	glBindTexture(GL_TEXTURE_2D, texture);
+
+	//printf("BoundsSize: %f\n", boundsSize);
+
+	printf("%d Max %d PixelSize\n", MAX_OVERLAY_SIZE, overlayPixelSize);
+
+	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, overlayPixelSize + BOARDER_MARGIN * 2, overlayPixelSize + BOARDER_MARGIN * 2, 0);
+	//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, MAX_OVERLAY_SIZE / ((float)MAX_OVERLAY_SIZE/(float)overlayPixelSize), MAX_OVERLAY_SIZE / ((float)MAX_OVERLAY_SIZE/(float)overlayPixelSize), 0);
+	glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, MAX_OVERLAY_SIZE, MAX_OVERLAY_SIZE, 0);
+
+	struct Texture_t overlayTex;
+	overlayTex.eType = ETextureType_TextureType_OpenGL;
+	overlayTex.eColorSpace = EColorSpace_ColorSpace_Auto;
+	overlayTex.handle = (void*)(intptr_t)texture;
+
+	oOverlay->SetOverlayTexture(overlayHandle, &overlayTex);
+}
+
+int main()
+{
+    printf("Initializing OpenVR-VisibleFloorBoundaries application\n");
+
+	int initializeCheckCount = 0;
+	while (1)
+	{
+		EVRInitError e;	
+		
+		VR_InitInternal(&e, EVRApplicationType_VRApplication_Overlay);
+		if (e != EVRInitError_VRInitError_None)
+		{
+			printf("Failed to initialize OpenVR API %d\n", e);
+			Sleep(INITIALIZE_WAIT_MILISECONDS);
+		}
+		else
+		{
+			printf("Initialized successfully with OpenVR\n");
+			break;
+		}
+
+		initializeCheckCount += 1;
+		if (initializeCheckCount >= INITIALIZE_CHECK_MAX)
+		{
+			printf("Continually failed to initialize OpenVR API. Ending OpenVR-VisibleFloorBoundaries application\n");
+			return -1;
+		}
+	}
+
+	oSystem = (struct VR_IVRSystem_FnTable*)CNOVRGetOpenVRFunctionTable(IVRSystem_Version);
+	oOverlay = (struct VR_IVROverlay_FnTable*)CNOVRGetOpenVRFunctionTable(IVROverlay_Version);
+	oChaperone = (struct VR_IVRChaperone_FnTable*)CNOVRGetOpenVRFunctionTable(IVRChaperone_Version);
+
+	if (!oSystem || !oOverlay || !oChaperone)
+	{ 
+		printf("Error getting function tables from OpenVR System and/or OpenVR Overlay and/or OpenVR Chaperone");
+		return -2;
+	}
+
+	oOverlay->CreateOverlay("OpenVR-VisibleFloorBoundaries-overlay", "OpenVR-VisibleFloorBoundaries", &overlayHandle);
+	oOverlay->SetOverlayColor(overlayHandle, 1, 1, 1);
+
+	boundsUV.uMin = 0;
+	boundsUV.uMax = 1;
+	boundsUV.vMin = 0;
+	boundsUV.vMax = 1;
+
+	//struct HmdQuad_t qwad;
+	oChaperone->GetPlayAreaRect(&chaperoneQuad);
+
+	//printf("Playspace Size: %f, %f  | Size: %f | Size in Pixels: %d\n", boundsWidth, boundsHeight, boundsSize, overlayPixelSize, (int)(boundsSize * PIXELS_PER_METER));
 
 	// Trying to set transform matrix? x.x
-	struct HmdMatrix34_t m;
-
 	for (int i = 0; i < 3; i++)
 	{
 		for (int j = 0; j < 4; j++)
@@ -180,100 +306,16 @@ int main()
 	m.m[0][0] = 1;
 	m.m[1][2] = 1;
 	m.m[2][1] = -1;
-	
-
-	oOverlay->SetOverlayTransformAbsolute(overlayHandle, ETrackingUniverseOrigin_TrackingUniverseStanding, &m);
-	//oOverlay->SetOverlayTransformProjection(overlayHandle, ETrackingUniverseOrigin_TrackingUniverseStanding, &m);
-	
 
 	while(CNFGHandleInput())
 	{
-		//printf("Looping?\n");
-
-		CNFGBGColor = 0x00000000; //Force transparent background
-
-		CNFGClearFrame();
-		//Change color to white.
-
-		CNFGColor( 0xffffffcf ); 	
-
-
-
-		// Top Rectangle
-		if (boundsSize != 0)
+		// Draw frame if needing to ReCalculate bounds.
+		if (ReCalculateBounds() == 1)
 		{
-			float pixelRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / 2.0;
-			float boundsRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / boundsSize;
-
-			CNFGTackRectangle(
-				(int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2
-			);
-
-			/*printf("x1: %f  z1: %f  x2: %f  z2: %f\n",
-				chaperoneQuad.vCorners[0].v[0],
-				chaperoneQuad.vCorners[0].v[2],
-				chaperoneQuad.vCorners[1].v[0],
-				chaperoneQuad.vCorners[1].v[2] 
-			);
-
-			printf("x1: %d  z1: %d  x2: %d  z2: %d\n",
-				(int)(chaperoneQuad.vCorners[0].v[0] * (float)overlayPixelSize / boundsSize) + (overlayPixelSize / 2) - BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[0].v[2] * (float)overlayPixelSize / boundsSize) + (overlayPixelSize / 2) - BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[1].v[0] * (float)overlayPixelSize / boundsSize) + (overlayPixelSize / 2) + BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[1].v[2] * (float)overlayPixelSize / boundsSize) + (overlayPixelSize / 2) + BOARDER_WIDTH_DIV2 
-			);*/
-
-			// Left Rectangle
-			CNFGTackRectangle(
-				(int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 +1 
-			);
-
-			// Bottom Rectangle
-			CNFGTackRectangle(
-				(int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-				(int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1
-			);	
-		
-			// Right Rectangle
-			CNFGTackRectangle(
-				(int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-				(int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 
-			);	
-
-			CNFGPenX = (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
-			CNFGPenY = (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
-			CNFGDrawText( "Sable7 <3", 2 );
-
+			//DrawBoundaryTexture();
 		}
 
-		//Display the image and wait for time to display next frame.
-		CNFGSwapBuffers();
-
-		//CNFGFlushRender();
-
-		glBindTexture(GL_TEXTURE_2D, texture);
-
-		//printf("BoundsSize: %f\n", boundsSize);
-
-		glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, overlayPixelSize + BOARDER_MARGIN * 2, overlayPixelSize + BOARDER_MARGIN * 2, 0);
-		//glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 0, 0, WIDTH, HEIGHT, 0);
-
-		struct Texture_t overlayTex;
-		overlayTex.eType = ETextureType_TextureType_OpenGL;
-		overlayTex.eColorSpace = EColorSpace_ColorSpace_Auto;
-		overlayTex.handle = (void*)(intptr_t)texture;
-
-		oOverlay->SetOverlayTexture(overlayHandle, &overlayTex);
+		DrawBoundaryTexture();
 
 		Sleep(50);
 	}

@@ -68,9 +68,9 @@ void* CNOVRGetOpenVRFunctionTable( const char * interfacename )
 //#define HEIGHT 660
 #define PIXELS_PER_METER 200
 #define MAX_OVERLAY_SIZE 1024
-#define BOARDER_WIDTH 4
-#define BOARDER_WIDTH_DIV2 BOARDER_WIDTH/2
-#define BOARDER_MARGIN 6
+#define BORDER_WIDTH 4
+#define BORDER_WIDTH_DIV2 BORDER_WIDTH/2
+#define BORDER_MARGIN 6
 
 #define INITIALIZE_CHECK_MAX 500
 #define INITIALIZE_WAIT_MILISECONDS 2500
@@ -128,24 +128,23 @@ int ReCalculateBounds()
 	//	overlayPixelSize = MAX_OVERLAY_SIZE;
 	//}
 
-	if (overlayPixelSize > MAX_OVERLAY_SIZE - BOARDER_MARGIN * 2)
+	if (overlayPixelSize > MAX_OVERLAY_SIZE - BORDER_MARGIN * 2)
 	{
-		overlayPixelSize = MAX_OVERLAY_SIZE - BOARDER_MARGIN * 2;
+		overlayPixelSize = MAX_OVERLAY_SIZE - BORDER_MARGIN * 2;
 	}
 
-	boundsSize += boundsSize * (BOARDER_MARGIN / (float)overlayPixelSize);
-
+	boundsSize += boundsSize * (BORDER_MARGIN / (float)overlayPixelSize);
 
 	if (createdWindow == 0)
 	{
-		CNFGSetup("OpenVR-VisibleFloorBoundaries", MAX_OVERLAY_SIZE, MAX_OVERLAY_SIZE);
+		CNFGSetup("OpenVR-VisibleFloorBoundaries", -MAX_OVERLAY_SIZE, -MAX_OVERLAY_SIZE);
 		//CNFGSetup("OpenVR-VisibleFloorBoundaries", overlayPixelSize + BOARDER_MARGIN * 2, overlayPixelSize + BOARDER_MARGIN * 2);
 
 		oOverlay->SetOverlayTextureBounds(overlayHandle, &boundsUV);
 		createdWindow = 1;
 	}
 
-	oOverlay->SetOverlayWidthInMeters(overlayHandle, ((float)MAX_OVERLAY_SIZE - (float)BOARDER_MARGIN * 2.0) / (float)PIXELS_PER_METER);
+	oOverlay->SetOverlayWidthInMeters(overlayHandle, ((float)MAX_OVERLAY_SIZE - (float)BORDER_MARGIN * 2.0) / (float)PIXELS_PER_METER);
 	//oOverlay->SetOverlayWidthInMeters(overlayHandle, boundsSize * (MAX_OVERLAY_SIZE / ((boundsSize * PIXELS_PER_METER) + BOARDER_MARGIN * 2)));
 	oOverlay->ShowOverlay(overlayHandle);
 
@@ -175,45 +174,45 @@ void DrawBoundaryTexture()
 
 	if (boundsSize != 0)
 	{
-		int horizontalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BOARDER_WIDTH_DIV2 - 1;
-		int verticalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BOARDER_WIDTH_DIV2 - 1;
-		float pixelRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / 2.0;
-		float boundsRatio = (float)(overlayPixelSize + BOARDER_MARGIN * 2) / boundsSize;
+		int horizontalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BORDER_WIDTH_DIV2 - 1;
+		int verticalOffset = MAX_OVERLAY_SIZE/2 - (boundsSize * PIXELS_PER_METER)/2.0 - BORDER_WIDTH_DIV2 - 1;
+		float pixelRatio = (float)(overlayPixelSize + BORDER_MARGIN * 2) / 2.0;
+		float boundsRatio = (float)(overlayPixelSize + BORDER_MARGIN * 2) / boundsSize;
 
 		// Top Rectangle
 		CNFGTackRectangle(
-			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2
+			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2
 		);
 
 		// Left Rectangle
 		CNFGTackRectangle(
-			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2,
-			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 +1 
+			horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2 +1 
 		);
 
 		// Bottom Rectangle
 		CNFGTackRectangle(
-			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2,
-			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1
+			horizontalOffset + (int)(chaperoneQuad.vCorners[2].v[0] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2,
+			verticalOffset + (int)(chaperoneQuad.vCorners[2].v[2] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2 + 1,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 1
 		);	
 	
 		// Right Rectangle
 		CNFGTackRectangle(
-			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 1,
-			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) + BOARDER_WIDTH_DIV2 + 1,
-			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 
+			horizontalOffset + (int)(chaperoneQuad.vCorners[3].v[0] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[3].v[2] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2 + 1,
+			horizontalOffset + (int)(chaperoneQuad.vCorners[0].v[0] * boundsRatio + pixelRatio) + BORDER_WIDTH_DIV2 + 1,
+			verticalOffset + (int)(chaperoneQuad.vCorners[0].v[2] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 
 		);	
 
-		CNFGPenX = horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
-		CNFGPenY = verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BOARDER_WIDTH_DIV2 + 15;
+		CNFGPenX = horizontalOffset + (int)(chaperoneQuad.vCorners[1].v[0] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 15;
+		CNFGPenY = verticalOffset + (int)(chaperoneQuad.vCorners[1].v[2] * boundsRatio + pixelRatio) - BORDER_WIDTH_DIV2 + 15;
 		CNFGDrawText( "~Sable7 <3", 2 );
 
 	}

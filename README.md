@@ -10,6 +10,7 @@ SteamVR likes to dim your boundaries while you are physically near the boundarie
 - Add config file to adjust colors and other settings.
 - Add the option to use colors and transparency from what is set in SteamVR.
 - Perhaps properly register this as a SteamVR app.
+- Additional/optional boundary border color option for more contrast in the case where the original boundary color blends in too much to the surrounding environment.
 
 ## Credits
 #[cntools/rawdraw](https://github.com/cntools/rawdraw)

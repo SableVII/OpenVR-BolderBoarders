@@ -1,7 +1,7 @@
 # OpenVR-VisibleFloorBoundaries
 Ensures the floor borders of your playspace always stays nice and visible.
 
-SteamVR likes to dim your boundaries while you are physically near the boundaries. In certain cases, such as when you *need* floor boundaries always on, this can make your boundaries very difficult to see. This OpenVR program will draw its own floor boundary (only as a square atm), with the specified colors, transparency, and thickness.
+SteamVR likes to dim your boundaries while you are physically near the boundaries. In certain cases, such as when you *need* floor boundaries always on, this can make your boundaries very difficult to see. This OpenVR program will draw its own floor boundary (only as a rectangle atm), with the specified colors, transparency, and thickness.
 
 ## To-Do
 - Figure out how I wanna release this application. Releasing this application in a safe manner/less scary than running an .exe file from online.

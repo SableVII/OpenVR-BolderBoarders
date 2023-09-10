@@ -5,8 +5,8 @@ SteamVR likes to dim your boundaries while you are physically near the boundarie
 
 ## To-Do
 - Figure out how I wanna release this application. Releasing this application in a safe manner/less scary than running an .exe file from online.
-- Better handling of running the program while OpenVR hasn't fully initialized yet.
-- Make changing the size of the playspace dynamic if a change is detected.
+- ~~Better handling of running the program while OpenVR hasn't fully initialized yet.~~
+- ~~Make changing the size of the playspace dynamic if a change is detected.~~
 - Add config file to adjust colors and other settings.
 - Add the option to use colors and transparency from what is set in SteamVR.
 - Perhaps properly register this as a SteamVR app.

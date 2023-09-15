@@ -20,5 +20,6 @@ A wonderful C library of simple drawing tools.
 Fantastic video introduction into using the OpenVR API in C along with CNTool's RawDraw.
 
 ## Media
+You can see how my own created boundary is much more bright than the suddenly dim chaperone bounds!
 ![OpenVRPlayspace](https://github.com/SableVII/OpenVR-VisibleFloorBoundaries/assets/143745362/4ffd80ec-3c24-4815-839c-a7a9ba7b4bd8)
 
